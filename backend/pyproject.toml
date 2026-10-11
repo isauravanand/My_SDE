@@ -1,0 +1,35 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Saurav Anand", email = "sauravanand1608@gmail.com" }
+]
+requires-python = ">=3.10.10"
+dependencies = [
+    "fastapi>=0.143.0",
+    "langchain-core>=1.6.9",
+    "langgraph>=1.2.14",
+    "python-dotenv>=1.0.0",
+    "psycopg[binary]>=3.2.0",
+    "sqlalchemy>=2.0.54",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+backend = "app.main:main"
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "app"
+module-root = "."
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.17.0",
+]
