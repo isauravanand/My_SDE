@@ -40,7 +40,9 @@ Apply all forward-only Alembic migrations:
 - `20261020_0004` (Code RAG Indexing Jobs & Chunks)
 - `20261020_0005` (LangGraph Planning Models)
 - `20261021_0006` (Execution Runs, Patch Artifacts, and Verification Results)
-- `20261021_0007` (Repair Runs and Repair Attempts — head)
+- `20261021_0007` (Repair Runs and Repair Attempts)
+- `20261021_0008` (Publishing Runs, Git Branches & PR Tracking)
+- `20261022_0009` (Billing Plans, Subscriptions, Usage Ledger & Webhooks — head)
 
 ```powershell
 uv run alembic upgrade head
@@ -274,12 +276,22 @@ uv run pytest tests/unit/test_repair_eval.py -v
 uv run pytest tests/unit/test_publishing_service.py tests/integration/test_publishing_api.py -v
 ```
 
-### 8.4 Run Full Test Suite (172 tests)
+### 8.4 Observability & Recovery Suite (Phase 10)
+```powershell
+uv run pytest tests/unit/test_observability.py tests/integration/test_observability_api.py -v
+```
+
+### 8.5 SaaS Billing & Metering Suite (Phase 11)
+```powershell
+uv run pytest tests/unit/test_billing.py tests/integration/test_billing_api.py -v
+```
+
+### 8.6 Run Full Test Suite (220 tests)
 ```powershell
 uv run pytest -v
 ```
 
-### 8.5 Run Ruff Linter
+### 8.7 Run Ruff Linter
 ```powershell
 uv run ruff check .
 ```
