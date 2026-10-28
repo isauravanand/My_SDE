@@ -1,4 +1,5 @@
 import logging
+import re
 import uuid
 from contextlib import asynccontextmanager
 
@@ -11,7 +12,7 @@ from app.api.v1.endpoints import health as health_endpoint
 from app.api.v1.endpoints import readiness as readiness_endpoint
 from app.api.v1.router import api_router
 from app.core.config import get_settings
-from app.core.logging import setup_logging
+from app.core.logging import correlation_id_ctx, setup_logging
 from app.core.security import SECURITY_HEADERS
 from app.db.session import dispose_engine
 
@@ -45,17 +46,26 @@ app = FastAPI(
 )
 
 # ------------------------------------------------------------------------------
-# Security Headers Middleware
+# Security Headers & Request Correlation Middleware
 # ------------------------------------------------------------------------------
 @app.middleware("http")
 async def add_security_headers_middleware(request: Request, call_next):
-    request_id = str(uuid.uuid4())
+    incoming_req_id = request.headers.get("X-Request-ID")
+    if incoming_req_id and re.match(r"^[A-Za-z0-9_-]{1,64}$", incoming_req_id):
+        request_id = incoming_req_id
+    else:
+        request_id = str(uuid.uuid4())
+
     request.state.request_id = request_id
-    response = await call_next(request)
-    for header_name, header_value in SECURITY_HEADERS.items():
-        response.headers[header_name] = header_value
-    response.headers["X-Request-ID"] = request_id
-    return response
+    token = correlation_id_ctx.set(request_id)
+    try:
+        response = await call_next(request)
+        for header_name, header_value in SECURITY_HEADERS.items():
+            response.headers[header_name] = header_value
+        response.headers["X-Request-ID"] = request_id
+        return response
+    finally:
+        correlation_id_ctx.reset(token)
 
 
 # ------------------------------------------------------------------------------
@@ -80,8 +90,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         {"field": ".".join(str(loc) for loc in err.get("loc", [])), "issue": err.get("msg", "Invalid value")}
         for err in exc.errors()
     ]
+    logger.info(
+        "Request validation error on %s %s: %s",
+        request.method,
+        request.url.path,
+        details,
+    )
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content={
             "error": {
                 "code": "VALIDATION_ERROR",
@@ -96,6 +112,20 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     request_id = getattr(request.state, "request_id", None)
+    if isinstance(exc.detail, dict):
+        code = exc.detail.get("code", "HTTP_ERROR")
+        message = exc.detail.get("message", "An HTTP error occurred.")
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "error": {
+                    "code": code,
+                    "message": message,
+                    "details": exc.detail,
+                    "request_id": request_id,
+                }
+            },
+        )
     message = exc.detail if isinstance(exc.detail, str) else "An HTTP error occurred."
     return JSONResponse(
         status_code=exc.status_code,

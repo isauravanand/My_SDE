@@ -27,8 +27,9 @@ def test_readiness_unhealthy(client: TestClient):
         data = response.json()
         assert data["status"] == "unhealthy"
         assert data["database"]["status"] == "disconnected"
-        assert data["database"]["latency_ms"] == 25.4
-        assert "connection to server" in data["database"]["error"]
+        assert "Database connectivity probe failed" in data["database"]["error"]
+        assert "FATAL" not in data["database"]["error"]
+        assert "socket" not in data["database"]["error"]
 
 
 def test_api_v1_readiness_route(client: TestClient):

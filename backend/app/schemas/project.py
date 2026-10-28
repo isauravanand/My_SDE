@@ -6,8 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class ProjectCreateRequest(BaseModel):
     name: str = Field(min_length=2, max_length=128, description="Project display name")
+    slug: str | None = Field(default=None, max_length=128, description="Optional unique project slug")
     description: str | None = Field(default=None, max_length=2000)
     repository_id: uuid.UUID | None = Field(default=None, description="Optional connected repository ID")
+    workspace_id: uuid.UUID | None = Field(default=None, description="Optional target workspace ID")
 
 
 class ProjectUpdateRequest(BaseModel):

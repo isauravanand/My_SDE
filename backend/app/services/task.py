@@ -175,6 +175,7 @@ class TaskService:
         task = Task(
             workspace_id=workspace_id,
             project_id=project_id,
+            repository_id=project.repository_id,
             title=payload.title.strip(),
             description=payload.description.strip() if payload.description else None,
             status=payload.status,

@@ -61,8 +61,10 @@ def check_database_connectivity() -> tuple[bool, float, str | None]:
         return True, latency_ms, None
     except Exception as exc:
         latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
-        logger.warning("Database connectivity check failed: %s", str(exc))
-        return False, latency_ms, str(exc)
+        from app.core.logging import redact_sensitive_data
+        sanitized = redact_sensitive_data(str(exc))
+        logger.warning("Database connectivity check failed: %s", sanitized)
+        return False, latency_ms, sanitized
 
 
 def dispose_engine() -> None:

@@ -10,11 +10,26 @@ from sqlalchemy.pool import StaticPool
 # Ensure test environment
 os.environ["APP_ENV"] = "test"
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["LLM_PROVIDER"] = "mock"
+os.environ["EMBEDDING_PROVIDER"] = "fake"
+os.environ["EMBEDDING_MODEL"] = "mock-embed-384"
+os.environ["EMBEDDING_DIMENSIONS"] = "384"
+os.environ["SANDBOX_PROVIDER"] = "mock"
+os.environ["BILLING_PROVIDER"] = "mock"
 
-from app.core.rate_limit import auth_rate_limiter
-from app.db.base import Base
-from app.db.session import get_db
-from app.main import app
+from app.core.config import settings  # noqa: E402
+
+settings.LLM_PROVIDER = "mock"
+settings.EMBEDDING_PROVIDER = "fake"
+settings.EMBEDDING_MODEL = "mock-embed-384"
+settings.EMBEDDING_DIMENSIONS = 384
+settings.SANDBOX_PROVIDER = "mock"
+settings.BILLING_PROVIDER = "mock"
+
+from app.core.rate_limit import auth_rate_limiter  # noqa: E402
+from app.db.base import Base  # noqa: E402
+from app.db.session import get_db  # noqa: E402
+from app.main import app  # noqa: E402
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 test_engine = create_engine(

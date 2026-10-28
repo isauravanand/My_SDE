@@ -14,10 +14,12 @@ import {
   HelpCircle,
   Building2,
   User,
+  Database,
 } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { EmptyState } from '../components/common/EmptyState';
+import { CodeRagModal } from '../components/rag/CodeRagModal';
 
 export function RepositoriesPage() {
   const queryClient = useQueryClient();
@@ -29,6 +31,7 @@ export function RepositoriesPage() {
   const [disconnectModalOpen, setDisconnectModalOpen] = useState(false);
   const [setupGuideOpen, setSetupGuideOpen] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [ragRepo, setRagRepo] = useState(null);
 
   // 1. Query GitHub Integration Status
   const {
@@ -381,6 +384,7 @@ export function RepositoriesPage() {
                     <th className="py-3 px-4">Repository</th>
                     <th className="py-3 px-3">Default Branch</th>
                     <th className="py-3 px-3">Visibility</th>
+                    <th className="py-3 px-3">Code RAG</th>
                     <th className="py-3 px-4 text-right">GitHub Link</th>
                   </tr>
                 </thead>
@@ -440,6 +444,23 @@ export function RepositoriesPage() {
                           )}
                           {repo.is_private ? 'Private' : 'Public'}
                         </span>
+                      </td>
+
+                      <td className="py-3 px-3">
+                        {repo.is_selected ? (
+                          <button
+                            onClick={() => setRagRepo(repo)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-background-subtle border border-border-subtle hover:border-accent text-[11px] font-mono text-content-primary hover:text-accent transition-colors"
+                            title="Inspect Code RAG, trigger indexing, or preview retrieval"
+                          >
+                            <Database className="w-3.5 h-3.5 text-accent" />
+                            Code RAG
+                          </button>
+                        ) : (
+                          <span className="text-[11px] text-content-muted font-mono italic">
+                            Select to index
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-3 px-4 text-right">
@@ -571,6 +592,15 @@ GITHUB_CALLBACK_URL=http://localhost:8000/api/v1/integrations/github/callback`}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Code RAG Modal */}
+      {ragRepo && (
+        <CodeRagModal
+          repo={ragRepo}
+          workspaceId={workspaceId}
+          onClose={() => setRagRepo(null)}
+        />
       )}
     </div>
   );

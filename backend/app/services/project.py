@@ -81,7 +81,7 @@ class ProjectService:
         """Create a new project in the specified workspace."""
         WorkspaceService.get_workspace_for_user(db, user, workspace_id)
 
-        base_slug = slugify(payload.name)
+        base_slug = slugify(payload.slug.strip()) if payload.slug and payload.slug.strip() else slugify(payload.name)
         # Ensure slug uniqueness within the workspace
         slug = base_slug
         existing = db.scalar(

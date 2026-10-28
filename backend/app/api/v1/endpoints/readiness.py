@@ -30,7 +30,7 @@ async def get_readiness():
             database=DatabaseComponentStatus(
                 status="disconnected",
                 latency_ms=latency_ms,
-                error=error,
+                error="Database connectivity probe failed. Check service logs for details.",
             ),
             timestamp=now,
         )

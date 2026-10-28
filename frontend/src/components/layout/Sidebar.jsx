@@ -6,6 +6,7 @@ import {
   CheckSquare,
   GitBranch,
   Bot,
+  CreditCard,
   Settings,
   Terminal,
   X,
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { name: 'Tasks', path: '/tasks', icon: CheckSquare },
   { name: 'Repositories', path: '/repositories', icon: GitBranch },
   { name: 'Agent Runs', path: '/runs', icon: Bot },
+  { name: 'Billing', path: '/billing', icon: CreditCard },
   { name: 'Settings', path: '/settings', icon: Settings },
 ];
 

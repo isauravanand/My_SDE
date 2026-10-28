@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session as DbSession
 
 from app.api.deps import (
@@ -44,12 +44,18 @@ async def list_projects(
 )
 async def create_project(
     payload: ProjectCreateRequest,
-    workspace_id: uuid.UUID = Query(..., description="Target workspace ID"),
+    workspace_id: uuid.UUID | None = Query(default=None, description="Target workspace ID"),
     current_user: User = Depends(get_current_user),
     db: DbSession = Depends(get_db),
 ) -> ProjectResponse:
+    effective_workspace_id = workspace_id or payload.workspace_id
+    if not effective_workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="workspace_id is required either as a query parameter or in the request body.",
+        )
     return ProjectService.create_project(
-        db=db, user=current_user, workspace_id=workspace_id, payload=payload
+        db=db, user=current_user, workspace_id=effective_workspace_id, payload=payload
     )
 
 

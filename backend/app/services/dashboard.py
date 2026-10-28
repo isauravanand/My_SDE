@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.activity import ActivityLog
+from app.models.execution import ExecutionRun
 from app.models.project import Project
 from app.models.task import Task
 from app.models.user import User
@@ -55,13 +56,19 @@ class DashboardService:
             )
         ) or 0
 
-        # 5. Agent runs (0 until Phase 4 sandbox/execution is implemented)
+        # 5. Total agent execution runs
+        total_agent_runs = db.scalar(
+            select(func.count(ExecutionRun.id)).where(
+                ExecutionRun.workspace_id == workspace_id,
+            )
+        ) or 0
+
         return DashboardSummaryResponse(
             total_projects=total_projects,
             open_tasks=open_tasks,
             in_progress_tasks=in_progress_tasks,
             completed_tasks=completed_tasks,
-            agent_runs=0,
+            agent_runs=total_agent_runs,
         )
 
     @staticmethod

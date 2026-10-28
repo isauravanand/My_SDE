@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import GUID, Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
+    from app.models.execution import ExecutionRun
     from app.models.github import GitHubRepository
     from app.models.project import Project
     from app.models.user import User
@@ -87,6 +88,12 @@ class Task(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by])
     assignee: Mapped["User | None"] = relationship("User", foreign_keys=[assignee_id])
+    execution_runs: Mapped[list["ExecutionRun"]] = relationship(
+        "ExecutionRun",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     def __repr__(self) -> str:
         return f"<Task id={self.id} title={self.title[:30]} status={self.status}>"

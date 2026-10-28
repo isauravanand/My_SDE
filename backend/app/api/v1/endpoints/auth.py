@@ -126,6 +126,7 @@ async def get_me(current_user: User = Depends(get_current_user)) -> UserResponse
 @router.post(
     "/verify-email",
     response_model=MessageResponse,
+    dependencies=[Depends(rate_limit_auth)],
     summary="Verify user email address using single-use token",
 )
 async def verify_email(

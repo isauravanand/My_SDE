@@ -10,6 +10,7 @@ import { ProjectDetailPage } from '../pages/ProjectDetailPage';
 import { TasksPage } from '../pages/TasksPage';
 import { RepositoriesPage } from '../pages/RepositoriesPage';
 import { RunsPage } from '../pages/RunsPage';
+import { BillingPage } from '../pages/BillingPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
@@ -45,6 +46,7 @@ export function AppRoutes() {
         <Route path="tasks" element={<TasksPage />} />
         <Route path="repositories" element={<RepositoriesPage />} />
         <Route path="runs" element={<RunsPage />} />
+        <Route path="billing" element={<BillingPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

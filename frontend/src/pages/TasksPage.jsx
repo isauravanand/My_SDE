@@ -16,10 +16,15 @@ import {
   Calendar,
   FolderGit2,
   User,
+  Sparkles,
+  Play,
 } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 import { api } from '../lib/api';
 import { EmptyState } from '../components/common/EmptyState';
+import { TaskRagContextModal } from '../components/rag/TaskRagContextModal';
+import PlanViewerModal from '../components/planning/PlanViewerModal';
+import ExecutionModal from '../components/execution/ExecutionModal';
 
 const STATUS_OPTIONS = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'];
 const PRIORITY_OPTIONS = ['low', 'medium', 'high', 'critical'];
@@ -58,6 +63,9 @@ export function TasksPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [detailTask, setDetailTask] = useState(null);
   const [editTask, setEditTask] = useState(null);
+  const [contextTask, setContextTask] = useState(null);
+  const [planTask, setPlanTask] = useState(null);
+  const [executionTask, setExecutionTask] = useState(null);
 
   // Create Task Form State
   const [newProjectId, setNewProjectId] = useState('');
@@ -412,6 +420,20 @@ export function TasksPage() {
                     <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <div className="inline-flex items-center gap-1.5">
                         <button
+                          onClick={() => setPlanTask(task)}
+                          className="p-1 rounded text-content-muted hover:text-[#CCFF00] hover:bg-background-subtle transition-colors"
+                          title="AI Implementation Plan"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-[#CCFF00]" />
+                        </button>
+                        <button
+                          onClick={() => setExecutionTask(task)}
+                          className="p-1 rounded text-content-muted hover:text-sky-400 hover:bg-background-subtle transition-colors"
+                          title="Execute Approved Plan in Sandbox"
+                        >
+                          <Play className="w-3.5 h-3.5 text-sky-400" />
+                        </button>
+                        <button
                           onClick={() => setDetailTask(task)}
                           className="p-1 rounded text-content-muted hover:text-content-primary hover:bg-background-subtle transition-colors"
                           title="View details"
@@ -547,6 +569,39 @@ export function TasksPage() {
             <div className="flex items-center justify-between pt-2 border-t border-border-subtle text-xs text-content-muted">
               <span>Created {new Date(detailTask.created_at).toLocaleString()}</span>
               <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExecutionTask(detailTask);
+                      setDetailTask(null);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20 transition-colors font-semibold"
+                    title="Execute approved plan and apply verified patch in isolated sandbox"
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    Execute & Verify
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlanTask(detailTask);
+                      setDetailTask(null);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#CCFF00] text-black hover:bg-[#b8e600] transition-colors font-semibold"
+                    title="View or generate LangGraph AI implementation plan"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Implementation Plan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContextTask(detailTask)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 transition-colors font-semibold"
+                    title="Retrieve relevant repository code using Code RAG"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Find Relevant Code
+                  </button>
                 <button
                   onClick={() => {
                     setEditTask(detailTask);
@@ -750,6 +805,31 @@ export function TasksPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Task RAG Context Modal */}
+      {contextTask && (
+        <TaskRagContextModal
+          task={contextTask}
+          onClose={() => setContextTask(null)}
+        />
+      )}
+
+      {/* AI Implementation Plan Modal */}
+      {planTask && (
+        <PlanViewerModal
+          task={planTask}
+          workspaceId={workspaceId}
+          onClose={() => setPlanTask(null)}
+        />
+      )}
+
+      {/* Isolated Execution & Verification Modal (Phase 7) */}
+      {executionTask && (
+        <ExecutionModal
+          task={executionTask}
+          onClose={() => setExecutionTask(null)}
+        />
       )}
     </div>
   );

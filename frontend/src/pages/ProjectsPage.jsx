@@ -110,6 +110,10 @@ export function ProjectsPage() {
   const handleCreateSubmit = (e) => {
     e.preventDefault();
     setFormError('');
+    if (!workspaceId) {
+      setFormError('Please select a workspace before creating a project.');
+      return;
+    }
     if (!projectName.trim()) {
       setFormError('Project name is required');
       return;
