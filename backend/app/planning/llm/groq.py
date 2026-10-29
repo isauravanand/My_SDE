@@ -148,6 +148,39 @@ class GroqLLMProvider(BaseLLMProvider):
             valid_step_ids = {s.get("step_id") for s in steps if isinstance(s, dict) and s.get("step_id")}
             for s in steps:
                 if isinstance(s, dict):
+                    # 1. Normalize location_status before checking evidence requirements
+                    loc = s.get("location_status")
+                    if isinstance(loc, str):
+                        loc_clean = loc.lower().strip()
+                        if loc_clean in {"verified_existing", "proposed_new", "hypothetical_investigation"}:
+                            s["location_status"] = loc_clean
+                        elif loc_clean in {"modify", "update", "edit", "existing", "verified"}:
+                            s["location_status"] = "verified_existing" if valid_ids else "proposed_new"
+                        elif loc_clean in {"create", "new", "add", "proposed"}:
+                            s["location_status"] = "proposed_new"
+                        elif loc_clean in {"investigation", "investigate", "test", "inspect", "hypothetical"}:
+                            s["location_status"] = "hypothetical_investigation"
+                        else:
+                            s["location_status"] = "verified_existing" if valid_ids else "proposed_new"
+                    else:
+                        s["location_status"] = "verified_existing" if valid_ids else "proposed_new"
+
+                    # 2. Normalize change_type
+                    ct = s.get("change_type")
+                    if isinstance(ct, str):
+                        ct_clean = ct.lower().strip()
+                        if ct_clean in {"create", "modify", "delete", "test", "configuration", "investigation"}:
+                            s["change_type"] = ct_clean
+                        elif ct_clean in {"new", "add"}:
+                            s["change_type"] = "create"
+                        elif ct_clean in {"remove"}:
+                            s["change_type"] = "delete"
+                        else:
+                            s["change_type"] = "modify"
+                    else:
+                        s["change_type"] = "modify"
+
+                    # 3. Clean evidence_refs
                     if "evidence_refs" in s and isinstance(s["evidence_refs"], list):
                         cleaned_refs = [r for r in s["evidence_refs"] if r in valid_ids]
                         if not cleaned_refs and s.get("location_status") == "verified_existing":
@@ -156,6 +189,13 @@ class GroqLLMProvider(BaseLLMProvider):
                             else:
                                 s["location_status"] = "proposed_new"
                         s["evidence_refs"] = cleaned_refs
+                    elif s.get("location_status") == "verified_existing":
+                        if valid_ids:
+                            s["evidence_refs"] = [sorted(valid_ids)[0]]
+                        else:
+                            s["location_status"] = "proposed_new"
+
+                    # 4. Clean dependencies
                     if "dependencies" in s and isinstance(s["dependencies"], list):
                         s["dependencies"] = [d for d in s["dependencies"] if d in valid_step_ids]
 

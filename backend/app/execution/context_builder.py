@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 import posixpath
 import re
-from pathlib import PurePosixPath
 
 logger = logging.getLogger(__name__)
 

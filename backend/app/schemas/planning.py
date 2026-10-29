@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 ChangeType = Literal["create", "modify", "delete", "test", "configuration", "investigation"]
 LocationStatus = Literal["verified_existing", "proposed_new", "hypothetical_investigation"]
@@ -52,6 +52,50 @@ class ImplementationStep(BaseModel):
         ...,
         description="Location category: verified_existing (code cited), proposed_new (new file), hypothetical_investigation (needs inspection)",
     )
+
+    @field_validator("location_status", mode="before")
+    @classmethod
+    def normalize_location_status(cls, v: Any) -> str:
+        if not isinstance(v, str):
+            return "proposed_new"
+        v_clean = v.lower().strip()
+        if v_clean in {"verified_existing", "proposed_new", "hypothetical_investigation"}:
+            return v_clean
+        if v_clean in {"modify", "update", "edit", "existing", "verified"}:
+            return "verified_existing"
+        if v_clean in {"create", "new", "add", "proposed"}:
+            return "proposed_new"
+        if v_clean in {"investigation", "investigate", "test", "inspect", "hypothetical"}:
+            return "hypothetical_investigation"
+        return "proposed_new"
+
+    @field_validator("change_type", mode="before")
+    @classmethod
+    def normalize_change_type(cls, v: Any) -> str:
+        if not isinstance(v, str):
+            return "modify"
+        v_clean = v.lower().strip()
+        if v_clean in {"create", "modify", "delete", "test", "configuration", "investigation"}:
+            return v_clean
+        if v_clean in {"new", "add"}:
+            return "create"
+        if v_clean in {"remove"}:
+            return "delete"
+        if v_clean in {"config", "setting", "settings"}:
+            return "configuration"
+        if v_clean in {"investigate", "inspect"}:
+            return "investigation"
+        return "modify"
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def normalize_confidence(cls, v: Any) -> str:
+        if not isinstance(v, str):
+            return "medium"
+        v_clean = v.lower().strip()
+        if v_clean in {"high", "medium", "low", "unverified"}:
+            return v_clean
+        return "medium"
 
 
 class ImplementationPlanSchema(BaseModel):
