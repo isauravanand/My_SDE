@@ -202,45 +202,28 @@ class ExecutionService:
             ]
 
         # 2. Load actual files from snapshot to give full context (e.g. index.html, index.css)
-        full_file_snippets = []
+        snapshot_files: dict[str, bytes] = {}
         if run.repository_id and run.base_commit_sha and run.base_commit_sha != "0000000000000000000000000000000000000000":
             try:
                 snapshot_files = self.snapshot_manager.prepare_snapshot(run.repository_id, run.base_commit_sha)
-                relevant_files = set()
-
-                # Add files mentioned in plan steps
-                for step in plan.plan_data.get("implementation_steps", []):
-                    for rf in step.get("relevant_files", []):
-                        clean_rf = rf.lstrip("./").strip()
-                        if clean_rf in snapshot_files:
-                            relevant_files.add(clean_rf)
-
-                # Add files mentioned in task title or description
-                combined_text = f"{task.title} {task.description or ''}".lower()
-                for filename in snapshot_files:
-                    base_name = filename.split("/")[-1].lower()
-                    if base_name in combined_text or filename.lower() in combined_text:
-                        relevant_files.add(filename)
-
-                # Always include core web files if present
-                for core_file in ["index.html", "index.css", "style.css", "main.css", "styles.css"]:
-                    if core_file in snapshot_files:
-                        relevant_files.add(core_file)
-
-                for rf in sorted(relevant_files)[:6]:
-                    content_bytes = snapshot_files.get(rf)
-                    if content_bytes:
-                        content_str = content_bytes.decode("utf-8", errors="ignore")
-                        if len(content_str) > 10000:
-                            content_str = content_str[:10000] + "\n... [truncated]"
-                        full_file_snippets.append(
-                            f"=== FULL REPOSITORY FILE: {rf} ===\n{content_str}\n=== END FILE: {rf} ==="
-                        )
             except Exception as e:
                 logger.warning(f"Could not load full snapshot for patch context: {e}")
 
-        all_context_blocks = full_file_snippets + evidence_snippets
-        code_context = "\n\n".join(all_context_blocks) if all_context_blocks else "No repository code context provided"
+        # Build prioritized, token-budgeted context using enhanced context builder
+        from app.execution.context_builder import build_execution_context
+        evidence_context = "\n\n".join(evidence_snippets) if evidence_snippets else ""
+        try:
+            code_context = build_execution_context(
+                task_title=task.title,
+                task_description=task.description or "",
+                plan_data=plan.plan_data,
+                snapshot=snapshot_files,
+            )
+            if evidence_context:
+                code_context = code_context + "\n\n" + evidence_context
+        except Exception as e:
+            logger.warning(f"Context builder failed: {e}; falling back to evidence only")
+            code_context = evidence_context or "No repository code context provided"
 
         # Generate patch using PatchGenerator
         # Run synchronously via loop or new loop if in thread
@@ -258,14 +241,31 @@ class ExecutionService:
                 repo_name=repo_name,
                 base_commit_sha=run.base_commit_sha,
                 code_context=code_context,
+                snapshot=snapshot_files,
             )
         )
+
+        # Run feedback loop verification before presenting to user
+        from app.execution.feedback_loop import verify_patch
+        feedback = verify_patch(raw_diff, snapshot_files)
+        if not feedback.passed:
+            logger.warning(
+                "Patch verification found %d error(s) in run %s: %s",
+                len(feedback.errors),
+                run.id,
+                "; ".join(feedback.errors[:3]),
+            )
+            # Store feedback errors in the artifact but still present to user
+            # (the user sees the errors as warnings, can still approve or reject)
+            feedback_summary = "Verification warnings:\n" + "\n".join(feedback.errors[:5])
+        else:
+            feedback_summary = None
 
         patch_artifact = PatchArtifact(
             execution_run_id=run.id,
             patch_hash=validation.patch_hash,
             validation_status="valid" if validation.is_valid else "invalid",
-            validation_error=validation.error_message,
+            validation_error=validation.error_message or feedback_summary,
             raw_diff=raw_diff,
             changed_files_count=validation.changed_files_count,
             additions_count=validation.additions_count,
