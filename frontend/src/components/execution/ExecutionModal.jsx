@@ -25,8 +25,10 @@ import {
   GitPullRequest,
   ExternalLink,
   Send,
+  Monitor,
 } from 'lucide-react';
 import { api } from '../../lib/api';
+import LiveScreenPreview from './LiveScreenPreview';
 
 const STATUS_BADGES = {
   queued: 'bg-zinc-800 text-zinc-400 border-zinc-700',
@@ -58,6 +60,7 @@ export default function ExecutionModal({ task, plan, onClose }) {
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [selectedChecks, setSelectedChecks] = useState(['syntax_check']);
   const [publishError, setPublishError] = useState('');
+  const [viewMode, setViewMode] = useState('preview');
 
   // 1. Fetch runs for this task
   const {
@@ -264,6 +267,17 @@ export default function ExecutionModal({ task, plan, onClose }) {
 
   const patch = activeRun?.patches?.[0];
   const checks = activeRun?.verification_results || [];
+
+  const {
+    data: previewData,
+    isLoading: isPreviewLoading,
+    refetch: refetchPreview,
+  } = useQuery({
+    queryKey: ['execution-preview', activeRunId],
+    queryFn: () => api.getExecutionPreview(activeRunId),
+    enabled: Boolean(activeRunId && patch),
+    staleTime: 10000,
+  });
 
   const toggleCheck = (checkKey) => {
     setSelectedChecks((prev) =>
@@ -532,24 +546,60 @@ export default function ExecutionModal({ task, plan, onClose }) {
                     </div>
                   </div>
 
-                  {/* Diff Viewer */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs text-zinc-400 px-1">
-                      <span className="font-semibold text-white flex items-center space-x-1.5">
-                        <FileCode className="w-4 h-4 text-[#CCFF00]" />
-                        <span>Proposed Patch ({patch.changed_files_count} file(s))</span>
-                      </span>
-                      <div className="space-x-3 font-mono">
+                  {/* View Mode Toggle: Live Screen Preview vs Code Diff */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => setViewMode('preview')}
+                          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                            viewMode === 'preview'
+                              ? 'bg-[#CCFF00] text-black shadow-md shadow-[#CCFF00]/10'
+                              : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Monitor className="w-3.5 h-3.5" />
+                          <span>Live Screen Preview</span>
+                          {previewData?.has_preview && (
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setViewMode('diff')}
+                          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                            viewMode === 'diff'
+                              ? 'bg-zinc-800 text-white border border-zinc-700'
+                              : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <FileCode className="w-3.5 h-3.5" />
+                          <span>Code Diff ({patch.changed_files_count} file(s))</span>
+                        </button>
+                      </div>
+
+                      <div className="space-x-3 font-mono text-xs">
                         <span className="text-emerald-400">+{patch.additions_count}</span>
                         <span className="text-rose-400">-{patch.deletions_count}</span>
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden max-h-[350px] overflow-y-auto">
-                      <div className="p-2 divide-y divide-zinc-900">
-                        {patch.raw_diff.split('\n').map((line, idx) => renderDiffLine(line, idx))}
+                    {viewMode === 'preview' ? (
+                      <LiveScreenPreview
+                        previewData={previewData}
+                        isPreviewLoading={isPreviewLoading}
+                        onRefresh={() => refetchPreview()}
+                      />
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden max-h-[380px] overflow-y-auto">
+                          <div className="p-2 divide-y divide-zinc-900">
+                            {patch.raw_diff.split('\n').map((line, idx) => renderDiffLine(line, idx))}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -826,13 +876,52 @@ export default function ExecutionModal({ task, plan, onClose }) {
                   )}
 
                   {patch && (
-                    <div className="pt-2">
-                      <span className="text-xs font-semibold text-white block mb-2">Final Applied Patch Diff</span>
-                      <div className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden max-h-[250px] overflow-y-auto">
-                        <div className="p-2 divide-y divide-zinc-900">
-                          {patch.raw_diff.split('\n').map((line, idx) => renderDiffLine(line, idx))}
+                    <div className="pt-2 space-y-3">
+                      <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => setViewMode('preview')}
+                            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                              viewMode === 'preview'
+                                ? 'bg-[#CCFF00] text-black shadow-md shadow-[#CCFF00]/10'
+                                : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                            }`}
+                          >
+                            <Monitor className="w-3.5 h-3.5" />
+                            <span>Live Screen Preview</span>
+                            {previewData?.has_preview && (
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setViewMode('diff')}
+                            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                              viewMode === 'diff'
+                                ? 'bg-zinc-800 text-white border border-zinc-700'
+                                : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                            }`}
+                          >
+                            <FileCode className="w-3.5 h-3.5" />
+                            <span>Final Applied Patch Diff</span>
+                          </button>
                         </div>
                       </div>
+
+                      {viewMode === 'preview' ? (
+                        <LiveScreenPreview
+                          previewData={previewData}
+                          isPreviewLoading={isPreviewLoading}
+                          onRefresh={() => refetchPreview()}
+                        />
+                      ) : (
+                        <div className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden max-h-[300px] overflow-y-auto">
+                          <div className="p-2 divide-y divide-zinc-900">
+                            {patch.raw_diff.split('\n').map((line, idx) => renderDiffLine(line, idx))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 

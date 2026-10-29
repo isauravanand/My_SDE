@@ -277,6 +277,10 @@ export const api = {
     request(`/api/v1/execution/runs/${runId}/patch`, {
       method: 'GET',
     }),
+  getExecutionPreview: (runId) =>
+    request(`/api/v1/execution/runs/${runId}/preview`, {
+      method: 'GET',
+    }),
   approvePatchAndExecute: (runId, payload = {}) =>
     request(`/api/v1/execution/runs/${runId}/approve`, {
       method: 'POST',

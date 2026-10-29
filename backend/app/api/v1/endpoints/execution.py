@@ -116,6 +116,22 @@ def get_execution_patch_artifact(
         raise HTTPException(status_code=e.status_code, detail=e.message) from e
 
 
+@router.get(
+    "/execution/runs/{run_id}/preview",
+    summary="Get inlined live screen preview of patched repository HTML/CSS",
+)
+def get_execution_preview_endpoint(
+    run_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    service = ExecutionService(db)
+    try:
+        return service.get_execution_preview(run_id=run_id, user_id=current_user.id)
+    except ExecutionServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message) from e
+
+
 @router.post(
     "/execution/runs/{run_id}/approve",
     response_model=ExecutionRunResponse,

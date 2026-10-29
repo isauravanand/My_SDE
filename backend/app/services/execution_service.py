@@ -2,6 +2,7 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
@@ -509,3 +510,24 @@ class ExecutionService:
         ).scalars().all()
 
         return list(runs)
+
+    def get_execution_preview(self, run_id: uuid.UUID, user_id: uuid.UUID) -> dict[str, Any]:
+        """Builds an inlined HTML/CSS live screen preview for the patched snapshot."""
+        run = self.get_execution_run(run_id=run_id, user_id=user_id)
+        patch = self.db.execute(
+            select(PatchArtifact).where(PatchArtifact.execution_run_id == run.id)
+        ).scalar_one_or_none()
+
+        raw_diff = patch.raw_diff if patch else ""
+        snapshot_files: dict[str, bytes] = {}
+        if run.repository_id and run.base_commit_sha and run.base_commit_sha != "0000000000000000000000000000000000000000":
+            try:
+                snapshot_files = self.snapshot_manager.prepare_snapshot(
+                    repository_id=run.repository_id,
+                    expected_commit_sha=run.base_commit_sha,
+                )
+            except Exception as e:
+                logger.warning(f"Could not load snapshot for live screen preview: {e}")
+
+        from app.execution.preview_builder import build_live_preview
+        return build_live_preview(snapshot_files, raw_diff)
